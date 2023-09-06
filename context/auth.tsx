@@ -1,17 +1,35 @@
+import axios, { AxiosResponse } from "axios";
 import { router, useNavigation, useSegments } from "expo-router";
 import { createContext, useContext, useEffect, useState } from "react";
+import { API_URL } from "../config";
 
 export type User = {
   id: string;
-  username: string;
-  name: string;
-  image: string;
+  access_token: string;
+  refresh_token: string;
 };
 
 type AuthContextType = {
   user?: User;
   signIn: (username: string) => void;
   signOut: () => void;
+};
+
+type AuthRequestPayload = {
+  device_id: string;
+};
+
+type AuthResponse = {
+  session: {
+    access_token: string;
+    refresh_token: string;
+    [key: string]: any;
+  };
+  user: {
+    id: string;
+    [key: string]: any;
+  };
+  [key: string]: any;
 };
 
 const AuthContext = createContext<AuthContextType>({
@@ -46,14 +64,25 @@ export function AuthProvider(props) {
   useProtectedRoute(user);
 
   const signIn = async (username: string) => {
-    const newUser = {
-      id: "1",
-      username: "loggedin",
-      name: "Logged In",
-      image: "https://cdn141.picsart.com/321556657089211.png",
-    }; // TODO: Replace with actual
-    console.log(newUser);
-    setUser(newUser);
+    try {
+      const response = await axios.post<
+        AuthRequestPayload,
+        AxiosResponse<AuthResponse>
+      >(`${API_URL}/api/auth/handshake`, {
+        device_id: username,
+      });
+
+      const responseData = response.data;
+      const { user, session } = responseData;
+
+      setUser({
+        id: user.id,
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+      });
+    } catch (error) {
+      console.error("Error during authentication:", error);
+    }
   };
 
   return (
